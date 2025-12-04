@@ -96,11 +96,23 @@ export default function IntentRecognizer() {
       </div>
 
       <div className="backdrop-blur-md bg-white/5 border border-white/10 rounded-2xl p-8 w-full max-w-md shadow-[0_0_30px_rgba(73,215,192,0.1)]">
+        {/* NIRD Badge */}
+        <div className="flex items-center justify-center mb-4">
+          <div className="inline-flex items-center gap-2 px-3 py-1 bg-gradient-to-r from-[#49d7c0]/10 to-[#72f0e0]/10 border border-[#49d7c0]/30 rounded-full">
+            <span className="text-[#49d7c0] text-xs font-medium">🌱</span>
+            <span className="text-[#49d7c0] text-xs font-medium">NIRD</span>
+            <span className="text-gray-400 text-xs">Numérique Inclusif, Responsable & Durable</span>
+          </div>
+        </div>
+
         <h1 className="text-2xl font-bold text-center mb-2 text-[#d9e2ec]">
           Décris ton intention
         </h1>
-        <p className="text-sm text-center text-gray-400 mb-6">
+        <p className="text-sm text-center text-gray-400 mb-1">
           L'IA préparera automatiquement ton formulaire
+        </p>
+        <p className="text-xs text-center text-gray-500 mb-6">
+          Pour un numérique plus inclusif, responsable et durable
         </p>
 
         <div className="space-y-4">
@@ -128,6 +140,26 @@ export default function IntentRecognizer() {
               "Analyser et continuer →"
             )}
           </button>
+        </div>
+
+        {/* NIRD Values Footer */}
+        <div className="mt-6 pt-6 border-t border-white/5">
+          <div className="flex flex-wrap items-center justify-center gap-3 text-xs text-gray-500">
+            <div className="flex items-center gap-1">
+              <span>🤝</span>
+              <span>Inclusif</span>
+            </div>
+            <div className="w-px h-3 bg-gray-600"></div>
+            <div className="flex items-center gap-1">
+              <span>🌍</span>
+              <span>Responsable</span>
+            </div>
+            <div className="w-px h-3 bg-gray-600"></div>
+            <div className="flex items-center gap-1">
+              <span>♻️</span>
+              <span>Durable</span>
+            </div>
+          </div>
         </div>
       </div>
 
