@@ -37,7 +37,16 @@ export async function POST(request: NextRequest) {
     const missionTitle =
       missionTitles[mission as keyof typeof missionTitles] || mission;
 
-    const systemPrompt = `Tu es un esprit numérique bienveillant du "Nexus". 
+    // Extract NIRD domain for donations
+    const nirdDomain = formData.nirdDomain || "";
+    const nirdDomainLabels: Record<string, string> = {
+      "education-numerique": "éducation numérique",
+      "inclusion-digitale": "inclusion digitale",
+      "ecologie-numerique": "écologie numérique",
+    };
+    const nirdDomainLabel = nirdDomainLabels[nirdDomain] || "";
+
+    const systemPrompt = `Tu es un esprit numérique bienveillant du "Nexus" qui promeut le NIRD (Numérique Inclusif, Responsable et Durable).
     Génère un message court, chaleureux et personnalisé pour remercier un utilisateur.
     
     CONTEXTE:
@@ -45,6 +54,7 @@ export async function POST(request: NextRequest) {
     - Année: ${currentYear}
     - Intentions utilisateur: "${intent || "Non spécifiée"}"
     - Nom: ${userName || "Voyageur du Nexus"}
+    ${nirdDomainLabel ? `- Domaine NIRD: ${nirdDomainLabel}` : ""}
     
     DONNÉES:
     ${JSON.stringify(formData, null, 2)}
@@ -53,13 +63,19 @@ export async function POST(request: NextRequest) {
     1. Mentionne le nom si disponible
     2. Référence la mission spécifique
     3. Mentionne l'année ${currentYear}
-    4. Garde le message entre 15-25 mots
-    5. Ton chaleureux et reconnaissant
-    6. Termine avec un appel positif
+    4. Intègre le thème NIRD (Numérique Inclusif, Responsable et Durable) dans le message
+    5. Si un domaine NIRD est spécifié (éducation numérique, inclusion digitale, écologie numérique), mentionne-le
+    6. Garde le message entre 20-30 mots
+    7. Ton chaleureux, reconnaissant et orienté vers un numérique inclusif, responsable et durable
+    8. Termine avec un appel positif pour rester connecté tout au long de l'année ${currentYear}
+    9. Utilise des emojis appropriés (🏆, 🌱, etc.)
+    
+    FORMAT ATTENDU:
+    "Un immense merci, [Nom] ! 🏆 Ton action en [Année] renforce un numérique inclusif, responsable et durable 🌱. Reste connecté pour suivre nos projets tout au long de l'année [Année] !"
     
     Exemples:
-    - "Salutations, Marie ! Ton don de 50€ mensuel en 2024 est un cadeau précieux pour notre cause."
-    - "Un immense merci, Jean, pour ta volonté de rejoindre nos rangs en 2024 !"
+    - "Un immense merci, Marie ! 🏆 Ton don en ${currentYear} renforce l'éducation numérique inclusive 🌱. Reste connectée pour suivre nos projets tout au long de l'année ${currentYear} !"
+    - "Un immense merci, Jean ! 🏆 Ton engagement en ${currentYear} renforce un numérique inclusif, responsable et durable 🌱. Reste connecté pour suivre nos projets tout au long de l'année ${currentYear} !"
     
     Réponds UNIQUEMENT avec le message final, sans guillemets.`;
 

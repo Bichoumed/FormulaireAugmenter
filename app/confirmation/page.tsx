@@ -135,9 +135,22 @@ export default function ConfirmationPage() {
             <h1 className="text-4xl font-bold text-white mb-2">
               {missionInfo.icon} {missionInfo.title}
             </h1>
+            {userName && (
+              <p className="text-xl text-[#49d7c0] font-semibold mb-2">
+                {userName}
+              </p>
+            )}
             <p className="text-gray-300">
               Ton intention a été transmise au Nexus
             </p>
+            <div className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-500/20 to-emerald-500/20 border border-green-400/30 rounded-full">
+              <span className="text-green-400 font-medium text-sm">
+                🌱 NIRD {year || new Date().getFullYear()}
+              </span>
+              <span className="text-gray-400 text-xs">
+                Numérique Inclusif, Responsable et Durable
+              </span>
+            </div>
           </div>
 
           {/* AI Message Card */}
@@ -154,11 +167,16 @@ export default function ConfirmationPage() {
                 "{aiMessage || "Chargement du message personnalisé..."}"
               </p>
 
-              {userName && (
-                <p className="text-gray-300 text-sm">
-                  Message généré spécialement pour {userName}
+              <div className="flex flex-col items-center gap-2 mt-4">
+                {userName && (
+                  <p className="text-gray-300 text-sm">
+                    Message généré spécialement pour <span className="font-semibold text-[#49d7c0]">{userName}</span>
+                  </p>
+                )}
+                <p className="text-gray-400 text-xs">
+                  Mission: {missionInfo.title} • Année: {year || new Date().getFullYear()}
                 </p>
-              )}
+              </div>
             </div>
           </div>
 
@@ -166,35 +184,35 @@ export default function ConfirmationPage() {
           <div className="mb-8 p-6 bg-gradient-to-r from-cyan-500/10 to-teal-400/10 border border-cyan-400/20 rounded-xl">
             <h3 className="text-lg font-bold text-white mb-4 flex items-center">
               <span className="mr-2">📈</span>
-              Impact en {year || new Date().getFullYear()}
+              Impact NIRD en {year || new Date().getFullYear()}
             </h3>
 
             <p className="text-gray-300 mb-4">{missionInfo.impact}</p>
 
             <div className="space-y-3">
               <div className="flex items-center">
-                <div className="w-2 h-2 rounded-full bg-cyan-400 mr-3"></div>
+                <div className="w-2 h-2 rounded-full bg-green-400 mr-3"></div>
                 <span className="text-white">
-                  Ton soutien en{" "}
+                  Ton action en{" "}
                   <span className="font-bold">
                     {year || new Date().getFullYear()}
                   </span>{" "}
-                  est crucial pour notre progression
+                  renforce un numérique inclusif, responsable et durable 🌱
                 </span>
               </div>
 
               <div className="flex items-center">
                 <div className="w-2 h-2 rounded-full bg-cyan-400 mr-3"></div>
                 <span className="text-white">
-                  Grâce à toi, nous pouvons avancer sur nos projets cette année
+                  Grâce à toi, nous pouvons avancer sur nos projets NIRD cette année
                 </span>
               </div>
 
               <div className="flex items-center">
                 <div className="w-2 h-2 rounded-full bg-cyan-400 mr-3"></div>
                 <span className="text-white">
-                  Reste connecté pour suivre nos exploits tout au long de
-                  l'année !
+                  Reste connecté pour suivre nos projets tout au long de
+                  l'année {year || new Date().getFullYear()} !
                 </span>
               </div>
             </div>

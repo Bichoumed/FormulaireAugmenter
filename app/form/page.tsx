@@ -158,6 +158,9 @@ export default function FormPage() {
     newsletter: "false",
     urgent: "false",
     domains: "",
+    nirdDomain: "",
+    sustainableContact: "email",
+    inclusiveInterest: "",
   }));
 
   useEffect(() => {
@@ -183,7 +186,7 @@ export default function FormPage() {
         amount: extracted.amount || "",
         frequency: extracted.frequency || "",
         firstName: extracted.firstName || extracted.name?.split(" ")[0] || "",
-        last:
+        lastName:
           extracted.lastName ||
           extracted.name?.split(" ").slice(1).join(" ") ||
           "",
@@ -197,6 +200,9 @@ export default function FormPage() {
         newsletter: prev.newsletter ?? "false",
         urgent: prev.urgent ?? "false",
         domains: prev.domains || "",
+        nirdDomain: prev.nirdDomain || "",
+        sustainableContact: prev.sustainableContact || "email",
+        inclusiveInterest: prev.inclusiveInterest || "",
       };
 
       if (JSON.stringify(prev) === JSON.stringify(next)) return prev;
@@ -397,26 +403,49 @@ export default function FormPage() {
                   />
                 </div>
 
-                <div>
-                  <label className="block text-gray-300 mb-2 text-sm font-medium">
-                    Fréquence *
-                  </label>
-                  <select
-                    name="frequency"
-                    value={formData.frequency || ""}
-                    onChange={(e) =>
-                      handleInputChange("frequency", e.target.value)
-                    }
-                    className="w-full bg-black/30 border border-gray-700 rounded-lg p-3 text-white focus:outline-none focus:border-[#49d7c0] focus:ring-1 focus:ring-[#49d7c0] transition-all"
-                    required
-                  >
-                    <option value="">Choisir une fréquence</option>
-                    <option value="once">Une fois</option>
-                    <option value="monthly">Mensuel</option>
-                    <option value="yearly">Annuel</option>
-                  </select>
-                </div>
+              <div>
+                <label className="block text-gray-300 mb-2 text-sm font-medium">
+                  Fréquence *
+                </label>
+                <select
+                  name="frequency"
+                  value={formData.frequency || ""}
+                  onChange={(e) =>
+                    handleInputChange("frequency", e.target.value)
+                  }
+                  className="w-full bg-black/30 border border-gray-700 rounded-lg p-3 text-white focus:outline-none focus:border-[#49d7c0] focus:ring-1 focus:ring-[#49d7c0] transition-all"
+                  required
+                >
+                  <option value="">Choisir une fréquence</option>
+                  <option value="once">Une fois</option>
+                  <option value="monthly">Mensuel</option>
+                  <option value="yearly">Annuel</option>
+                </select>
               </div>
+            </div>
+
+            <div>
+              <label className="block text-gray-300 mb-2 text-sm font-medium">
+                Domaine d'impact NIRD (Numérique Inclusif, Responsable et Durable) *
+              </label>
+              <select
+                name="nirdDomain"
+                value={formData.nirdDomain || ""}
+                onChange={(e) =>
+                  handleInputChange("nirdDomain", e.target.value)
+                }
+                className="w-full bg-black/30 border border-gray-700 rounded-lg p-3 text-white focus:outline-none focus:border-[#49d7c0] focus:ring-1 focus:ring-[#49d7c0] transition-all"
+                required
+              >
+                <option value="">Choisir un domaine</option>
+                <option value="education-numerique">Éducation numérique</option>
+                <option value="inclusion-digitale">Inclusion digitale</option>
+                <option value="ecologie-numerique">Écologie numérique</option>
+              </select>
+              <p className="text-gray-500 text-xs mt-1">
+                🌱 Choisissez le domaine où votre don aura le plus d'impact
+              </p>
+            </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
@@ -713,6 +742,28 @@ export default function FormPage() {
                   ))}
                 </div>
               </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-gray-300 text-sm font-medium">
+                    Intérêt pour les projets inclusifs et durables *
+                  </label>
+                </div>
+                <textarea
+                  name="inclusiveInterest"
+                  value={formData.inclusiveInterest || ""}
+                  onChange={(e) =>
+                    handleTextareaChange("inclusiveInterest", e.target.value)
+                  }
+                  placeholder="Décrivez votre intérêt pour les projets numériques inclusifs, responsables et durables (NIRD)..."
+                  className="w-full bg-black/30 border border-gray-700 rounded-lg p-3 text-white focus:outline-none focus:border-[#49d7c0] focus:ring-1 focus:ring-[#49d7c0] transition-all"
+                  rows={4}
+                  required
+                />
+                <p className="text-gray-500 text-xs mt-1">
+                  🌱 Partagez votre motivation pour un numérique plus inclusif et durable
+                </p>
+              </div>
             </>
           )}
 
@@ -792,6 +843,48 @@ export default function FormPage() {
                   <option value="technical">Problème technique</option>
                   <option value="other">Autre</option>
                 </select>
+              </div>
+
+              <div className="space-y-3">
+                <label className="block text-gray-300 text-sm font-medium">
+                  Méthode de contact responsable *
+                </label>
+                <div className="space-y-2">
+                  <div className="flex items-center">
+                    <input
+                      type="radio"
+                      name="sustainableContact"
+                      value="email"
+                      checked={formData.sustainableContact === "email"}
+                      onChange={(e) =>
+                        handleInputChange("sustainableContact", e.target.value)
+                      }
+                      className="w-4 h-4 text-[#49d7c0] bg-black/30 border-gray-700 focus:ring-[#49d7c0]"
+                      required
+                    />
+                    <label className="ml-2 text-gray-300 text-sm">
+                      Email 🌱 (recommandé - plus durable)
+                    </label>
+                  </div>
+                  <div className="flex items-center">
+                    <input
+                      type="radio"
+                      name="sustainableContact"
+                      value="phone"
+                      checked={formData.sustainableContact === "phone"}
+                      onChange={(e) =>
+                        handleInputChange("sustainableContact", e.target.value)
+                      }
+                      className="w-4 h-4 text-[#49d7c0] bg-black/30 border-gray-700 focus:ring-[#49d7c0]"
+                    />
+                    <label className="ml-2 text-gray-300 text-sm">
+                      Téléphone
+                    </label>
+                  </div>
+                </div>
+                <p className="text-gray-500 text-xs mt-1">
+                  🌱 L'email est plus durable que le SMS (moins d'impact environnemental)
+                </p>
               </div>
 
               <div>
@@ -972,27 +1065,56 @@ export default function FormPage() {
                   Comment souhaitez-vous être contacté ? *
                 </label>
                 <div className="space-y-2">
-                  {["Email", "Téléphone", "Les deux"].map((method) => (
-                    <div key={method} className="flex items-center">
-                      <input
-                        type="radio"
-                        name="contactMethod"
-                        value={method.toLowerCase()}
-                        checked={
-                          formData.contactMethod === method.toLowerCase()
-                        }
-                        onChange={(e) =>
-                          handleInputChange("contactMethod", e.target.value)
-                        }
-                        className="w-4 h-4 text-[#49d7c0] bg-black/30 border-gray-700 focus:ring-[#49d7c0]"
-                        required
-                      />
-                      <label className="ml-2 text-gray-300 text-sm">
-                        {method}
-                      </label>
-                    </div>
-                  ))}
+                  <div className="flex items-center">
+                    <input
+                      type="radio"
+                      name="sustainableContact"
+                      value="email"
+                      checked={formData.sustainableContact === "email"}
+                      onChange={(e) =>
+                        handleInputChange("sustainableContact", e.target.value)
+                      }
+                      className="w-4 h-4 text-[#49d7c0] bg-black/30 border-gray-700 focus:ring-[#49d7c0]"
+                      required
+                    />
+                    <label className="ml-2 text-gray-300 text-sm">
+                      Email 🌱 (recommandé - plus durable)
+                    </label>
+                  </div>
+                  <div className="flex items-center">
+                    <input
+                      type="radio"
+                      name="sustainableContact"
+                      value="phone"
+                      checked={formData.sustainableContact === "phone"}
+                      onChange={(e) =>
+                        handleInputChange("sustainableContact", e.target.value)
+                      }
+                      className="w-4 h-4 text-[#49d7c0] bg-black/30 border-gray-700 focus:ring-[#49d7c0]"
+                    />
+                    <label className="ml-2 text-gray-300 text-sm">
+                      Téléphone
+                    </label>
+                  </div>
+                  <div className="flex items-center">
+                    <input
+                      type="radio"
+                      name="sustainableContact"
+                      value="both"
+                      checked={formData.sustainableContact === "both"}
+                      onChange={(e) =>
+                        handleInputChange("sustainableContact", e.target.value)
+                      }
+                      className="w-4 h-4 text-[#49d7c0] bg-black/30 border-gray-700 focus:ring-[#49d7c0]"
+                    />
+                    <label className="ml-2 text-gray-300 text-sm">
+                      Les deux
+                    </label>
+                  </div>
                 </div>
+                <p className="text-gray-500 text-xs mt-1">
+                  🌱 L'email est plus durable que le SMS (moins d'impact environnemental)
+                </p>
               </div>
 
               <div className="flex items-center">
