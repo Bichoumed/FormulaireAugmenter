@@ -1,26 +1,51 @@
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* GLOBAL THEME */
+body {
+  @apply bg-bg text-textMain min-h-screen;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+/* BACKGROUND ATMOSPHERE */
+.app-gradient {
+  background: radial-gradient(
+      circle at 20% 0%,
+      rgba(114, 240, 224, 0.08),
+      transparent 50%
+    ),
+    radial-gradient(
+      circle at 80% 100%,
+      rgba(73, 215, 192, 0.05),
+      transparent 60%
+    );
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/* GLASS EFFECT CARD */
+.glass-panel {
+  @apply bg-surface/70 backdrop-blur-xl border border-white/10 rounded-2xl shadow-neon;
+}
+
+/* SMOOTH TRANSITIONS */
+* {
+  @apply transition-all duration-200 ease-out;
+}
+
+/* ORB PULSE */
+@keyframes slow-pulse {
+  0%,
+  100% {
+    opacity: 0.75;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.08);
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+.slow-pulse {
+  animation: slow-pulse 3s ease-in-out infinite;
 }
