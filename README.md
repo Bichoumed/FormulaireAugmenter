@@ -152,7 +152,7 @@ pnpm dev
 
 ### Utilisation
 
-1. Accéder à l'application : Ouvrir http://localhost:3000
+1. Accéder à l'application 
 2. Choisir une mission : Don, Bénévolat, Contact, ou Information
 3. Remplir le formulaire : Les champs s'adaptent automatiquement
 4. Utiliser l'IA* (optionnel) : Cliquer sur le bouton "IA" pour améliorer le texte
