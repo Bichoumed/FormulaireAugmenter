@@ -173,7 +173,7 @@ pnpm dev
 
 L'application est déployée et accessible en ligne :
 
- [https://trois-dimensions-dkny.vercel.app/](https://trois-dimensions-dkny.vercel.app/)
+ [https://formulaire-augmenter-blcn.vercel.app//](https://formulaire-augmenter-blcn.vercel.app/)
 
 Application web déployée sur Vercel, proposant des formulaires dynamiques et intelligents avec reconnaissance d'intention par IA, protection anti-spam avancée, et personnalisation NIRD 2025.
 
