@@ -32,7 +32,6 @@ export default function SweetAlert({
 
   if (!show) return null;
 
-  // Toutes les alertes utilisent la couleur turquoise/teal du thème
   const turquoiseTheme = {
     bg: "from-[#49d7c0]/20 to-[#72f0e0]/20",
     border: "border-[#49d7c0]/50",
