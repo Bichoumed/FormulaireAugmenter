@@ -1,7 +1,8 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
+import SweetAlert from "@/components/SweetAlert";
 
 function SimpleIAButton({
   fieldName,
@@ -131,13 +132,27 @@ function SimpleIAButton({
   );
 }
 
-export default function FormPage() {
+function FormPageContent() {
   const searchParams = useSearchParams();
   const mission = searchParams?.get("mission");
   const intent = searchParams?.get("intent");
 
   const [isClient, setIsClient] = useState(() => typeof window !== "undefined");
   const [prefilled, setPrefilled] = useState<Record<string, string>>({});
+  const [formStartTime] = useState(() => Date.now());
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [validationErrors, setValidationErrors] = useState<string[]>([]);
+  const [alert, setAlert] = useState<{
+    show: boolean;
+    type: "error" | "warning" | "info" | "success";
+    title: string;
+    message: string;
+  }>({
+    show: false,
+    type: "info",
+    title: "",
+    message: "",
+  });
   const [formData, setFormData] = useState(() => ({
     message: "",
     skills: "",
@@ -161,6 +176,7 @@ export default function FormPage() {
     nirdDomain: "",
     sustainableContact: "email",
     inclusiveInterest: "",
+    website: "", // Honeypot anti-spam
   }));
 
   useEffect(() => {
@@ -216,6 +232,49 @@ export default function FormPage() {
   };
 
   const handleTextareaChange = (fieldName: string, value: string) => {
+    // 🚫 Détection de code en temps réel (PHP, Python, HTML, JavaScript, etc.)
+    if (value) {
+      // Détection PHP
+      if (value.includes("<?php") || (value.includes("$") && value.includes("=") && (value.includes("getenv") || value.includes("curl_init") || value.includes("apiKey")))) {
+        setAlert({
+          show: true,
+          type: "warning",
+          title: "⚠️ Code PHP détecté",
+          message: "Le code PHP n'est pas autorisé dans ce champ.\n\nVeuillez entrer uniquement du texte normal.",
+        });
+        return;
+      }
+      // Détection Python
+      if (value.includes("import ") || value.includes("def ") || value.includes("class ") || value.includes("from ")) {
+        setAlert({
+          show: true,
+          type: "warning",
+          title: "⚠️ Code Python détecté",
+          message: "Le code Python n'est pas autorisé dans ce champ.\n\nVeuillez entrer uniquement du texte normal.",
+        });
+        return;
+      }
+      // Détection HTML/JavaScript
+      if (value.includes("<html") || value.includes("<!DOCTYPE") || value.includes("<script") || value.includes("javascript:")) {
+        setAlert({
+          show: true,
+          type: "warning",
+          title: "⚠️ Code détecté",
+          message: "Le code (HTML, JavaScript, PHP, etc.) n'est pas autorisé dans ce champ.\n\nVeuillez entrer uniquement du texte normal.",
+        });
+        return;
+      }
+      // Détection de commandes curl/API
+      if (value.includes("curl ") || value.includes("curl_init") || value.includes("api.openai.com") || value.includes("API_KEY") || value.includes("getenv")) {
+        setAlert({
+          show: true,
+          type: "warning",
+          title: "⚠️ Code/Commandes détectées",
+          message: "Les commandes et le code ne sont pas autorisés dans ce champ.\n\nVeuillez entrer uniquement du texte normal.",
+        });
+        return;
+      }
+    }
     setFormData((prev) => ({ ...prev, [fieldName]: value }));
   };
 
@@ -225,6 +284,108 @@ export default function FormPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    setIsSubmitting(true);
+    setValidationErrors([]);
+
+    // 🔒 Vérification honeypot
+    if (formData.website && formData.website.trim() !== "") {
+      setAlert({
+        show: true,
+        type: "error",
+        title: "🚫 Spam détecté",
+        message: "Votre requête a été identifiée comme suspecte.\n\nLes champs de sécurité ont été détectés.\n\nVeuillez réessayer avec un formulaire valide.",
+      });
+      setIsSubmitting(false);
+      return;
+    }
+
+    // ⏱️ Vérification temps de remplissage (minimum 3 secondes)
+    const fillTime = Date.now() - formStartTime;
+    if (fillTime < 3000) {
+      setAlert({
+        show: true,
+        type: "warning",
+        title: "⏱️ Formulaire soumis trop rapidement",
+        message: "Le formulaire doit être rempli en au moins 3 secondes pour des raisons de sécurité.\n\nVeuillez prendre le temps de remplir tous les champs correctement.",
+      });
+      setIsSubmitting(false);
+      return;
+    }
+
+    // ✅ Validation basique
+    const errors: string[] = [];
+    if (!formData.firstName || formData.firstName.trim().length < 2) {
+      errors.push("Prénom invalide (minimum 2 caractères)");
+    }
+    if (!formData.lastName || formData.lastName.trim().length < 2) {
+      errors.push("Nom invalide (minimum 2 caractères)");
+    }
+    if (!formData.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      errors.push("Email invalide");
+    }
+
+    // 🚫 Vérification de code (PHP, Python, HTML, JavaScript, etc.)
+    const allText = Object.values(formData).join(" ");
+    
+    // Détection PHP
+    if (allText.includes("<?php") || (allText.includes("$") && allText.includes("getenv")) || allText.includes("curl_init")) {
+      setAlert({
+        show: true,
+        type: "warning",
+        title: "⚠️ Code PHP détecté",
+        message: "Le code PHP n'est pas autorisé dans les champs du formulaire.\n\nVeuillez entrer uniquement du texte normal.\n\nExemple : \"Je veux faire un don de 50€\"",
+      });
+      setIsSubmitting(false);
+      return;
+    }
+    
+    // Détection Python
+    if (allText.includes("import ") || allText.includes("def ") || allText.includes("class ")) {
+      setAlert({
+        show: true,
+        type: "warning",
+        title: "⚠️ Code Python détecté",
+        message: "Le code Python n'est pas autorisé dans les champs du formulaire.\n\nVeuillez entrer uniquement du texte normal.",
+      });
+      setIsSubmitting(false);
+      return;
+    }
+    
+    // Détection HTML/JavaScript
+    if (allText.includes("<html") || allText.includes("<!DOCTYPE") || allText.includes("<script") || allText.includes("javascript:")) {
+      setAlert({
+        show: true,
+        type: "warning",
+        title: "⚠️ Code HTML/JavaScript détecté",
+        message: "Le code HTML et JavaScript ne sont pas autorisés dans les champs du formulaire.\n\nVeuillez entrer uniquement du texte normal.\n\nExemple : \"Je veux faire un don de 50€\"",
+      });
+      setIsSubmitting(false);
+      return;
+    }
+    
+    // Détection de commandes/API
+    if (allText.includes("curl ") || allText.includes("api.openai.com") || allText.includes("API_KEY") || allText.includes("getenv")) {
+      setAlert({
+        show: true,
+        type: "warning",
+        title: "⚠️ Code/Commandes détectées",
+        message: "Les commandes et le code ne sont pas autorisés.\n\nVeuillez entrer uniquement du texte normal.",
+      });
+      setIsSubmitting(false);
+      return;
+    }
+
+    if (errors.length > 0) {
+      setAlert({
+        show: true,
+        type: "error",
+        title: "❌ Erreurs de validation",
+        message: errors.join("\n"),
+      });
+      setIsSubmitting(false);
+      return;
+    }
 
     // Build submission data
     const submissionData = {
@@ -236,8 +397,6 @@ export default function FormPage() {
         "Voyageur du Nexus",
     };
 
-    console.log("Submitting form:", submissionData);
-
     try {
       const summaryRes = await fetch("/api/summary", {
         method: "POST",
@@ -245,7 +404,10 @@ export default function FormPage() {
         body: JSON.stringify(submissionData),
       });
 
-      if (!summaryRes.ok) throw new Error("Summary generation failed");
+      if (!summaryRes.ok) {
+        const errorData = await summaryRes.json().catch(() => ({}));
+        throw new Error(errorData.error || "Erreur lors de la soumission");
+      }
 
       const summaryData = await summaryRes.json();
 
@@ -272,9 +434,27 @@ export default function FormPage() {
       });
 
       window.location.href = `/confirmation?${params.toString()}`;
-    } catch (error) {
+    } catch (error: any) {
       console.error("Submission error:", error);
-      alert("Erreur lors de l'envoi. Veuillez réessayer.");
+      
+      // Vérifier si c'est une erreur de sécurité (403)
+      const errorMessage = error.message || "Erreur lors de l'envoi. Veuillez réessayer.";
+      if (errorMessage.includes("403") || errorMessage.includes("Spam") || errorMessage.includes("HTML") || errorMessage.includes("JavaScript")) {
+        setAlert({
+          show: true,
+          type: "error",
+          title: "🔒 Erreur de sécurité",
+          message: errorMessage + "\n\nVeuillez réessayer avec des données valides.",
+        });
+      } else {
+        setAlert({
+          show: true,
+          type: "error",
+          title: "❌ Erreur lors de l'envoi",
+          message: errorMessage + "\n\nVeuillez réessayer.",
+        });
+      }
+      setIsSubmitting(false);
     }
   };
 
@@ -372,11 +552,40 @@ export default function FormPage() {
           </div>
         )}
 
+        {/* Affichage des erreurs */}
+        {validationErrors.length > 0 && (
+          <div className="mb-6 p-4 bg-red-500/10 border border-red-400/30 rounded-lg">
+            <div className="flex items-center mb-2">
+              <span className="text-red-400 text-xl mr-2">⚠️</span>
+              <h3 className="text-red-400 font-bold">Erreurs de validation</h3>
+            </div>
+            <ul className="list-disc list-inside space-y-1">
+              {validationErrors.map((error, index) => (
+                <li key={index} className="text-red-300 text-sm">{error}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+
         {/* Main Form */}
         <form
           onSubmit={handleSubmit}
           className="backdrop-blur-md bg-white/5 border border-white/10 rounded-2xl p-8 space-y-6"
         >
+          {/* 🔒 Honeypot anti-spam (champ caché pour les robots) */}
+          <div className="hidden" aria-hidden="true">
+            <label htmlFor="website">Ne pas remplir ce champ</label>
+            <input
+              type="text"
+              id="website"
+              name="website"
+              value={formData.website}
+              onChange={(e) => handleInputChange("website", e.target.value)}
+              tabIndex={-1}
+              autoComplete="off"
+            />
+          </div>
+
           {/* DONATION FORM */}
           {mission === "donation" && (
             <>
@@ -1137,12 +1346,57 @@ export default function FormPage() {
           {/* Submit button */}
           <button
             type="submit"
-            className="mt-8 w-full py-3 bg-gradient-to-r from-[#49d7c0] to-[#72f0e0] text-gray-900 font-bold rounded-lg hover:opacity-90 transition-all"
+            disabled={isSubmitting}
+            className="mt-8 w-full py-3 bg-gradient-to-r from-[#49d7c0] to-[#72f0e0] text-gray-900 font-bold rounded-lg hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
           >
-            Envoyer le formulaire
+            {isSubmitting ? (
+              <>
+                <div className="w-5 h-5 border-2 border-gray-900/30 border-t-gray-900 rounded-full animate-spin mr-2"></div>
+                <span>Envoi sécurisé...</span>
+              </>
+            ) : (
+              <>
+                <span className="mr-2">🔐</span>
+                <span>Envoyer (sécurisé HTTPS)</span>
+              </>
+            )}
           </button>
+
+          {/* Message de sécurité */}
+          <div className="mt-4 p-3 bg-green-500/10 border border-green-400/30 rounded-lg">
+            <p className="text-sm text-green-300 flex items-center">
+              <span className="mr-2">🔐</span>
+              <span><strong>Données sécurisées :</strong> Vos informations transitent via HTTPS et sont protégées contre le spam.</span>
+            </p>
+          </div>
         </form>
+
+        {/* Sweet Alert */}
+        <SweetAlert
+          show={alert.show}
+          type={alert.type}
+          title={alert.title}
+          message={alert.message}
+          onClose={() => setAlert({ ...alert, show: false })}
+        />
       </div>
     </div>
+  );
+}
+
+export default function FormPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 p-4 flex items-center justify-center">
+          <div className="text-center">
+            <div className="w-16 h-16 rounded-full bg-gradient-to-r from-[#49d7c0] to-[#72f0e0] animate-pulse mx-auto mb-4"></div>
+            <p className="text-white">Chargement du formulaire...</p>
+          </div>
+        </div>
+      }
+    >
+      <FormPageContent />
+    </Suspense>
   );
 }

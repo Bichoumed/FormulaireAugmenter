@@ -1,5 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import Groq from "groq-sdk";
+import {
+  checkRateLimit,
+  getClientIP,
+  isHTTPS,
+  sanitizeInput,
+  containsHTML,
+  containsPHP,
+  containsPython,
+  containsCode,
+  validateEmail,
+} from "@/lib/security";
 
 let groq: Groq | null = null;
 if (process.env.GROQ_API_KEY) {
@@ -8,6 +19,25 @@ if (process.env.GROQ_API_KEY) {
 
 export async function POST(request: NextRequest) {
   try {
+    // 🔐 Vérification HTTPS en production
+    if (process.env.NODE_ENV === "production" && !isHTTPS(request)) {
+      return NextResponse.json(
+        { error: "HTTPS requis en production" },
+        { status: 403 }
+      );
+    }
+
+    // 📍 Rate limiting (10 requêtes par 15 minutes)
+    const clientIP = getClientIP(request);
+    const rateLimit = checkRateLimit(clientIP, 10, 15 * 60 * 1000);
+
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { error: "Trop de requêtes. Veuillez patienter." },
+        { status: 429 }
+      );
+    }
+
     const { mission, formData, intent, userName } = await request.json();
 
     if (!mission || !formData) {
@@ -15,6 +45,78 @@ export async function POST(request: NextRequest) {
         { error: "Missing parameters" },
         { status: 400 }
       );
+    }
+
+    // 🚫 Détection honeypot
+    if (formData.website && formData.website.trim() !== "") {
+      console.warn(`🚫 Spam détecté (honeypot) - IP: ${clientIP}`);
+      return NextResponse.json(
+        { error: "Spam détecté" },
+        { status: 403 }
+      );
+    }
+
+    // 🚫 Validation de code (PHP, Python, HTML, JavaScript) dans tous les champs texte
+    for (const [key, value] of Object.entries(formData)) {
+      if (typeof value === "string") {
+        const codeDetection = containsCode(value);
+        if (codeDetection.detected) {
+          console.warn(`🚫 Code ${codeDetection.type} détecté dans ${key} - IP: ${clientIP}`, {
+            type: codeDetection.type,
+            field: key,
+            valuePreview: value.substring(0, 100),
+          });
+          return NextResponse.json(
+            { 
+              error: `Code ${codeDetection.type} détecté`, 
+              message: `Le code ${codeDetection.type || "malveillant"} n'est pas autorisé dans le champ ${key}.` 
+            },
+            { status: 403 }
+          );
+        }
+        
+        if (containsPHP(value)) {
+          console.warn(`🚫 PHP détecté dans ${key} - IP: ${clientIP}`);
+          return NextResponse.json(
+            { error: "Code PHP détecté", message: "Le code PHP n'est pas autorisé." },
+            { status: 403 }
+          );
+        }
+        
+        if (containsPython(value)) {
+          console.warn(`🚫 Python détecté dans ${key} - IP: ${clientIP}`);
+          return NextResponse.json(
+            { error: "Code Python détecté", message: "Le code Python n'est pas autorisé." },
+            { status: 403 }
+          );
+        }
+        
+        if (containsHTML(value)) {
+          console.warn(`🚫 HTML détecté dans ${key} - IP: ${clientIP}`);
+          return NextResponse.json(
+            { error: "Code HTML détecté", message: "Le code HTML n'est pas autorisé." },
+            { status: 403 }
+          );
+        }
+      }
+    }
+
+    // ✅ Validation email si présent
+    if (formData.email && !validateEmail(formData.email)) {
+      return NextResponse.json(
+        { error: "Email invalide" },
+        { status: 400 }
+      );
+    }
+
+    // 🧹 Sanitization des données
+    const sanitizedFormData: Record<string, any> = {};
+    for (const [key, value] of Object.entries(formData)) {
+      if (typeof value === "string") {
+        sanitizedFormData[key] = sanitizeInput(value);
+      } else {
+        sanitizedFormData[key] = value;
+      }
     }
 
     if (!groq) {
@@ -57,7 +159,7 @@ export async function POST(request: NextRequest) {
     ${nirdDomainLabel ? `- Domaine NIRD: ${nirdDomainLabel}` : ""}
     
     DONNÉES:
-    ${JSON.stringify(formData, null, 2)}
+    ${JSON.stringify(sanitizedFormData, null, 2)}
     
     RÈGLES:
     1. Mentionne le nom si disponible

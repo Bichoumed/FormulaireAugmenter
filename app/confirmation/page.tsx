@@ -1,10 +1,10 @@
 "use client";
 
 import { useSearchParams, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import AxolotlOrb from "@/components/AxolotlOrb";
 
-export default function ConfirmationPage() {
+function ConfirmationContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
@@ -313,5 +313,22 @@ export default function ConfirmationPage() {
         }
       `}</style>
     </div>
+  );
+}
+
+export default function ConfirmationPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 p-4 flex items-center justify-center">
+          <div className="text-center">
+            <div className="w-16 h-16 rounded-full bg-gradient-to-r from-[#49d7c0] to-[#72f0e0] animate-pulse mx-auto mb-4"></div>
+            <p className="text-white">Chargement de la confirmation...</p>
+          </div>
+        </div>
+      }
+    >
+      <ConfirmationContent />
+    </Suspense>
   );
 }

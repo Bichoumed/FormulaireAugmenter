@@ -1,5 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import Groq from "groq-sdk";
+import {
+  checkRateLimit,
+  getClientIP,
+  isHTTPS,
+  validateUserInput,
+  containsHTML,
+  containsJavaScript,
+  containsPHP,
+  containsPython,
+  containsCode,
+  sanitizeInput,
+} from "@/lib/security";
 
 let groq: Groq | null = null;
 if (process.env.GROQ_API_KEY) {
@@ -47,10 +59,210 @@ Réponds UNIQUEMENT en JSON valide:
 
 export async function POST(request: NextRequest) {
   try {
-    const { userInput } = await request.json();
+    // 🔐 Vérification HTTPS en production
+    if (process.env.NODE_ENV === "production" && !isHTTPS(request)) {
+      return NextResponse.json(
+        { error: "HTTPS requis en production" },
+        { status: 403 }
+      );
+    }
+
+    // 📍 Rate limiting (10 requêtes par 15 minutes)
+    const clientIP = getClientIP(request);
+    const rateLimit = checkRateLimit(clientIP, 10, 15 * 60 * 1000);
+
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { error: "Trop de requêtes. Veuillez patienter." },
+        {
+          status: 429,
+          headers: {
+            "Retry-After": Math.ceil((rateLimit.resetTime - Date.now()) / 1000).toString(),
+          },
+        }
+      );
+    }
+
+    const body = await request.json();
+    const { userInput, ...otherFields } = body;
+
+    // 🔍 Debug: Log tous les champs reçus
+    console.log("📥 Requête reçue - Champs:", {
+      userInput: userInput?.substring(0, 50),
+      otherFields: Object.keys(otherFields),
+      otherFieldsValues: otherFields,
+      clientIP,
+    });
+
+    // 🚫 Détection honeypot (champs anti-spam) - Liste complète
+    const honeypotFields = [
+      "honeypot_field",
+      "website",
+      "url",
+      "homepage",
+      "website_url",
+      "url_field",
+      "bot_check",
+      "spam_check",
+      "verification",
+      "confirm_email",
+      "email_confirm",
+      "phone_confirm",
+      "human_check",
+      "captcha",
+      "recaptcha",
+      "hcaptcha",
+    ];
+
+    // 🚫 Détection de champs suspects supplémentaires
+    const suspiciousFieldPatterns = [
+      /^autre_/i, // "autre_champ", "autre_field", etc.
+      /_field$/i, // Tout champ se terminant par "_field"
+      /_check$/i, // Tout champ se terminant par "_check"
+      /^spam_/i, // "spam_*"
+      /^bot_/i, // "bot_*"
+    ];
+
+    // Vérifier les champs honeypot connus
+    for (const field of honeypotFields) {
+      if (otherFields[field] && otherFields[field].toString().trim() !== "") {
+        console.warn(`🚫 Spam détecté (honeypot: ${field}) - IP: ${clientIP}`, {
+          field,
+          value: otherFields[field],
+          userInput: userInput?.substring(0, 50),
+          allFields: Object.keys(otherFields),
+        });
+        return NextResponse.json(
+          { 
+            error: "Spam détecté", 
+            message: "Tentative de spam détectée et bloquée. Les champs de sécurité ont été remplis." 
+          },
+          { status: 403 }
+        );
+      }
+    }
+
+    // Vérifier les champs suspects avec patterns
+    for (const fieldName of Object.keys(otherFields)) {
+      // Si le champ correspond à un pattern suspect ET a une valeur
+      if (suspiciousFieldPatterns.some(pattern => pattern.test(fieldName))) {
+        const fieldValue = otherFields[fieldName];
+        if (fieldValue && fieldValue.toString().trim() !== "") {
+          console.warn(`🚫 Spam détecté (champ suspect: ${fieldName}) - IP: ${clientIP}`, {
+            field: fieldName,
+            value: fieldValue,
+            userInput: userInput?.substring(0, 50),
+            allFields: Object.keys(otherFields),
+          });
+          return NextResponse.json(
+            { 
+              error: "Spam détecté", 
+              message: "Tentative de spam détectée et bloquée. Des champs suspects ont été détectés." 
+            },
+            { status: 403 }
+          );
+        }
+      }
+    }
+
+    // 🚫 Détection si champs supplémentaires présents (normalement seul userInput devrait être présent)
+    const extraFieldsCount = Object.keys(otherFields).length;
+    if (extraFieldsCount > 0) {
+      // Si des champs supplémentaires sont présents, c'est suspect
+      // Vérifier d'abord si ce sont des champs suspects
+      const hasSuspiciousFields = Object.keys(otherFields).some(fieldName => {
+        // Vérifier si c'est un champ honeypot connu
+        if (honeypotFields.includes(fieldName)) return true;
+        // Vérifier si ça correspond à un pattern suspect
+        if (suspiciousFieldPatterns.some(pattern => pattern.test(fieldName))) return true;
+        return false;
+      });
+
+      if (hasSuspiciousFields) {
+        // Déjà géré par les boucles précédentes, mais on log pour debug
+        console.log("🔍 Champs suspects détectés mais déjà bloqués");
+      } else {
+        // Champs supplémentaires non suspects mais présents quand même
+        console.warn(`🚫 Champs supplémentaires détectés (${extraFieldsCount}) - IP: ${clientIP}`, {
+          fields: Object.keys(otherFields),
+          fieldsValues: otherFields,
+          userInput: userInput?.substring(0, 50),
+        });
+        return NextResponse.json(
+          { 
+            error: "Spam détecté", 
+            message: "Tentative de spam détectée. Des champs supplémentaires non autorisés ont été envoyés." 
+          },
+          { status: 403 }
+        );
+      }
+    }
 
     if (!userInput || typeof userInput !== "string") {
       return NextResponse.json({ error: "Invalid input" }, { status: 400 });
+    }
+
+    // 🚫 Détection de code (tous types : PHP, Python, HTML, JavaScript, etc.)
+    const codeDetection = containsCode(userInput);
+    if (codeDetection.detected) {
+      console.warn(`🚫 Code ${codeDetection.type} détecté - IP: ${clientIP}`, {
+        type: codeDetection.type,
+        inputPreview: userInput.substring(0, 100),
+      });
+      return NextResponse.json(
+        { 
+          error: `Code ${codeDetection.type} détecté`, 
+          message: `Le code ${codeDetection.type || "malveillant"} n'est pas autorisé dans ce champ.` 
+        },
+        { status: 403 }
+      );
+    }
+
+    // 🚫 Validation HTML/JavaScript (double vérification)
+    const validation = validateUserInput(userInput);
+    if (!validation.valid) {
+      console.warn(`🚫 ${validation.reason} - IP: ${clientIP}`);
+      return NextResponse.json(
+        { error: "Contenu invalide", message: validation.reason },
+        { status: 403 }
+      );
+    }
+
+    if (containsPHP(userInput)) {
+      return NextResponse.json(
+        { error: "Code PHP détecté", message: "Le code PHP n'est pas autorisé." },
+        { status: 403 }
+      );
+    }
+
+    if (containsPython(userInput)) {
+      return NextResponse.json(
+        { error: "Code Python détecté", message: "Le code Python n'est pas autorisé." },
+        { status: 403 }
+      );
+    }
+
+    if (containsHTML(userInput)) {
+      return NextResponse.json(
+        { error: "Code HTML détecté", message: "Le code HTML n'est pas autorisé." },
+        { status: 403 }
+      );
+    }
+
+    if (containsJavaScript(userInput)) {
+      return NextResponse.json(
+        { error: "Code JavaScript détecté", message: "Le code JavaScript n'est pas autorisé." },
+        { status: 403 }
+      );
+    }
+
+    // 🧹 Sanitization
+    const sanitizedInput = sanitizeInput(userInput);
+    if (!sanitizedInput || sanitizedInput.trim() === "") {
+      return NextResponse.json(
+        { error: "Contenu invalide", message: "Votre requête contient du contenu non autorisé." },
+        { status: 403 }
+      );
     }
 
     if (!groq) {
@@ -60,12 +272,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log("Processing user input:", userInput);
+    console.log("Processing user input:", sanitizedInput);
 
     const completion = await groq.chat.completions.create({
       messages: [
         { role: "system", content: SYSTEM_PROMPT },
-        { role: "user", content: userInput },
+        { role: "user", content: sanitizedInput },
       ],
       model: "llama-3.1-8b-instant",
       temperature: 0.1,
@@ -103,7 +315,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Post-process the AI response
-    return NextResponse.json(postProcessAIResult(aiResult, userInput));
+    return NextResponse.json(postProcessAIResult(aiResult, sanitizedInput));
   } catch (error: any) {
     console.error("API error:", error);
     return manualDetection(error.message || "Unknown error");

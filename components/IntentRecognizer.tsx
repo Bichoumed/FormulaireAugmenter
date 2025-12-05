@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import AxolotlOrb from "./AxolotlOrb";
 import AIThinking from "./AIThinking";
+import SweetAlert from "./SweetAlert";
 
 // Mission details mapping (kept for manual selection)
 const MISSION_DETAILS = {
@@ -36,6 +37,17 @@ interface IntentResult {
 export default function IntentRecognizer() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [alert, setAlert] = useState<{
+    show: boolean;
+    type: "error" | "warning" | "info" | "success";
+    title: string;
+    message: string;
+  }>({
+    show: false,
+    type: "error",
+    title: "",
+    message: "",
+  });
   const router = useRouter();
 
   const handleAnalyze = async () => {
@@ -49,14 +61,86 @@ export default function IntentRecognizer() {
         body: JSON.stringify({ userInput: input }),
       });
 
+      // 🚫 Gestion des erreurs de sécurité (403)
+      if (res.status === 403) {
+        const errorData = await res.json().catch(() => ({ 
+          error: "Erreur de sécurité", 
+          message: "Votre requête contient du contenu non autorisé." 
+        }));
+        
+        // Afficher une alerte jolie pour HTML/JavaScript
+        if (errorData.error === "Code HTML détecté" || errorData.error === "Code JavaScript détecté") {
+          setAlert({
+            show: true,
+            type: "warning",
+            title: "Code HTML/JavaScript détecté",
+            message: "Le code HTML et JavaScript ne sont pas autorisés dans ce champ.\n\nVeuillez entrer uniquement du texte normal pour décrire votre intention.\n\nExemple : \"Je veux faire un don de 50€\"",
+          });
+        } else if (errorData.error === "Spam détecté") {
+          setAlert({
+            show: true,
+            type: "error",
+            title: "Spam détecté",
+            message: "Votre requête a été identifiée comme suspecte.\n\nVeuillez réessayer avec un message valide.",
+          });
+        } else if (errorData.error === "Contenu invalide") {
+          setAlert({
+            show: true,
+            type: "warning",
+            title: "Contenu invalide",
+            message: errorData.message || "Votre requête contient du contenu non autorisé.\n\nVeuillez entrer uniquement du texte normal.",
+          });
+        } else {
+          setAlert({
+            show: true,
+            type: "error",
+            title: "Erreur de sécurité",
+            message: errorData.message || "Votre requête n'a pas pu être traitée pour des raisons de sécurité.",
+          });
+        }
+        setLoading(false);
+        return;
+      }
+
+      // 🚫 Gestion du rate limiting (429)
+      if (res.status === 429) {
+        const errorData = await res.json().catch(() => ({ 
+          error: "Trop de requêtes",
+          message: "Veuillez patienter avant de réessayer."
+        }));
+        setAlert({
+          show: true,
+          type: "warning",
+          title: "Trop de requêtes",
+          message: "Vous avez envoyé trop de requêtes en peu de temps.\n\nVeuillez patienter quelques instants avant de réessayer.",
+        });
+        setLoading(false);
+        return;
+      }
+
       if (!res.ok) {
-        throw new Error(`API error: ${res.status}`);
+        const errorData = await res.json().catch(() => ({ error: "Erreur serveur" }));
+        setAlert({
+          show: true,
+          type: "error",
+          title: "Erreur",
+          message: (errorData.error || `Erreur ${res.status}: ${res.statusText}`) + "\n\nVeuillez réessayer.",
+        });
+        setLoading(false);
+        return;
       }
 
       const data = await res.json();
 
       if (data.error) {
-        throw new Error(data.error);
+        setAlert({
+          show: true,
+          type: "error",
+          title: "Erreur",
+          message: data.error + "\n\nVeuillez réessayer.",
+        });
+        setLoading(false);
+        return;
       }
 
       // AUTO-REDIRECT to form with extracted data
@@ -75,9 +159,14 @@ export default function IntentRecognizer() {
 
       // Redirect immediately to form
       router.push(`/form?${params.toString()}`);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error detecting intent:", error);
-      // On error, show mission selection
+      setAlert({
+        show: true,
+        type: "error",
+        title: "Erreur de connexion",
+        message: "Impossible de contacter le serveur.\n\nVérifiez votre connexion internet et réessayez.",
+      });
     } finally {
       setLoading(false);
     }
@@ -178,6 +267,15 @@ export default function IntentRecognizer() {
           </div>
         </div>
       )}
+
+      {/* Sweet Alert */}
+      <SweetAlert
+        show={alert.show}
+        type={alert.type}
+        title={alert.title}
+        message={alert.message}
+        onClose={() => setAlert({ ...alert, show: false })}
+      />
     </div>
   );
 }
