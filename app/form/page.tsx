@@ -789,24 +789,6 @@ function FormPageContent() {
                   500 caractères maximum
                 </p>
               </div>
-
-              <div className="flex items-center">
-                <input
-                  type="checkbox"
-                  name="anonymous"
-                  checked={formData.anonymous === "true"}
-                  onChange={(e) =>
-                    handleInputChange("anonymous", e.target.checked)
-                  }
-                  className="w-4 h-4 text-[#49d7c0] bg-black/30 border-gray-700 rounded focus:ring-[#49d7c0]"
-                />
-                <label
-                  htmlFor="anonymous"
-                  className="ml-2 text-gray-300 text-sm"
-                >
-                  Faire un don anonyme
-                </label>
-              </div>
             </>
           )}
 
