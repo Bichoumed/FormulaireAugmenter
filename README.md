@@ -130,7 +130,6 @@ yarn dev
 pnpm dev
 ```
 
-Le serveur de développement démarre sur   http://localhost:3000  
 
 ### Exécution en Mode Production
 
