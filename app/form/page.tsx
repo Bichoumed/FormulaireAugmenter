@@ -2,6 +2,7 @@
 
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState, Suspense } from "react";
+import Link from "next/link";
 import SweetAlert from "@/components/SweetAlert";
 
 function SimpleIAButton({
@@ -137,7 +138,7 @@ function FormPageContent() {
   const mission = searchParams?.get("mission");
   const intent = searchParams?.get("intent");
 
-  const [isClient, setIsClient] = useState(() => typeof window !== "undefined");
+  const [isClient] = useState(() => typeof window !== "undefined");
   const [prefilled, setPrefilled] = useState<Record<string, string>>({});
   const [formStartTime] = useState(() => Date.now());
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -280,6 +281,59 @@ function FormPageContent() {
 
   const handleTextImprove = (fieldName: string, newValue: string) => {
     setFormData((prev) => ({ ...prev, [fieldName]: newValue }));
+  };
+
+  // Validation des champs requis selon la mission
+  const isFormValid = (): boolean => {
+    if (!mission) return false;
+
+    // Validation de base (toujours requis)
+    const basicValid =
+      formData.firstName.trim().length >= 2 &&
+      formData.lastName.trim().length >= 2 &&
+      formData.email.trim().length > 0 &&
+      /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email);
+
+    if (!basicValid) return false;
+
+    // Validation selon la mission
+    switch (mission) {
+      case "donation":
+        return (
+          basicValid &&
+          formData.amount.trim().length > 0 &&
+          formData.frequency.trim().length > 0 &&
+          formData.nirdDomain.trim().length > 0
+        );
+
+      case "volunteer":
+        return (
+          basicValid &&
+          formData.phone.trim().length > 0 &&
+          formData.skills.trim().length > 0 &&
+          formData.availability.trim().length > 0 &&
+          formData.motivation.trim().length > 0 &&
+          formData.inclusiveInterest.trim().length > 0
+        );
+
+      case "contact":
+        return (
+          basicValid &&
+          formData.subject.trim().length > 0 &&
+          formData.message.trim().length >= 10
+        );
+
+      case "info":
+        return (
+          basicValid &&
+          formData.topic.trim().length > 0 &&
+          formData.infoType.trim().length > 0 &&
+          formData.question.trim().length >= 20
+        );
+
+      default:
+        return false;
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -434,11 +488,11 @@ function FormPageContent() {
       });
 
       window.location.href = `/confirmation?${params.toString()}`;
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Submission error:", error);
       
       // Vérifier si c'est une erreur de sécurité (403)
-      const errorMessage = error.message || "Erreur lors de l'envoi. Veuillez réessayer.";
+      const errorMessage = error instanceof Error ? error.message : "Erreur lors de l'envoi. Veuillez réessayer.";
       if (errorMessage.includes("403") || errorMessage.includes("Spam") || errorMessage.includes("HTML") || errorMessage.includes("JavaScript")) {
         setAlert({
           show: true,
@@ -477,14 +531,14 @@ function FormPageContent() {
             Formulaire non trouvé
           </h1>
           <p className="text-gray-400">
-            Aucune mission spécifiée. Retournez à la page d'accueil.
+            Aucune mission spécifiée. Retournez à la page d&apos;accueil.
           </p>
-          <a
+          <Link
             href="/"
             className="mt-4 inline-block py-2 px-6 bg-gradient-to-r from-[#49d7c0] to-[#72f0e0] text-gray-900 font-semibold rounded-lg"
           >
-            Retour à l'accueil
-          </a>
+            Retour à l&apos;accueil
+          </Link>
         </div>
       </div>
     );
@@ -507,7 +561,7 @@ function FormPageContent() {
         {intent && (
           <p className="text-gray-400 mb-6">
             <span className="inline-block mr-2">💡</span>
-            Basé sur : <span className="italic">"{intent}"</span>
+            Basé sur : <span className="italic">&quot;{intent}&quot;</span>
           </p>
         )}
 
@@ -635,7 +689,7 @@ function FormPageContent() {
 
             <div>
               <label className="block text-gray-300 mb-2 text-sm font-medium">
-                Domaine d'impact NIRD (Numérique Inclusif, Responsable et Durable) *
+                Domaine d&apos;impact NIRD (Numérique Inclusif, Responsable et Durable) *
               </label>
               <select
                 name="nirdDomain"
@@ -651,9 +705,9 @@ function FormPageContent() {
                 <option value="inclusion-digitale">Inclusion digitale</option>
                 <option value="ecologie-numerique">Écologie numérique</option>
               </select>
-              <p className="text-gray-500 text-xs mt-1">
-                🌱 Choisissez le domaine où votre don aura le plus d'impact
-              </p>
+                <p className="text-gray-500 text-xs mt-1">
+                  🌱 Choisissez le domaine où votre don aura le plus d&apos;impact
+                </p>
             </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -710,7 +764,7 @@ function FormPageContent() {
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <label className="block text-gray-300 text-sm font-medium">
-                    Message d'accompagnement (optionnel)
+                    Message d&apos;accompagnement (optionnel)
                   </label>
                   <SimpleIAButton
                     fieldName="message"
@@ -910,48 +964,6 @@ function FormPageContent() {
                 />
               </div>
 
-              <div className="space-y-3">
-                <label className="block text-gray-300 text-sm font-medium">
-                  Domaines d'intérêt *
-                </label>
-                <div className="grid grid-cols-2 gap-3">
-                  {[
-                    "Événementiel",
-                    "Communication",
-                    "Logistique",
-                    "Animation",
-                    "Administratif",
-                    "Technique",
-                  ].map((domain) => (
-                    <div key={domain} className="flex items-center">
-                      <input
-                        type="checkbox"
-                        name="domains"
-                        value={domain.toLowerCase()}
-                        checked={
-                          formData.domains?.includes(domain.toLowerCase()) ||
-                          false
-                        }
-                        onChange={(e) => {
-                          const currentDomains =
-                            formData.domains?.split(",").filter(Boolean) || [];
-                          const newDomains = e.target.checked
-                            ? [...currentDomains, domain.toLowerCase()]
-                            : currentDomains.filter(
-                                (d) => d !== domain.toLowerCase()
-                              );
-                          handleInputChange("domains", newDomains.join(","));
-                        }}
-                        className="w-4 h-4 text-[#49d7c0] bg-black/30 border-gray-700 rounded focus:ring-[#49d7c0]"
-                      />
-                      <label className="ml-2 text-gray-300 text-sm">
-                        {domain}
-                      </label>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <label className="block text-gray-300 text-sm font-medium">
@@ -1054,48 +1066,6 @@ function FormPageContent() {
                 </select>
               </div>
 
-              <div className="space-y-3">
-                <label className="block text-gray-300 text-sm font-medium">
-                  Méthode de contact responsable *
-                </label>
-                <div className="space-y-2">
-                  <div className="flex items-center">
-                    <input
-                      type="radio"
-                      name="sustainableContact"
-                      value="email"
-                      checked={formData.sustainableContact === "email"}
-                      onChange={(e) =>
-                        handleInputChange("sustainableContact", e.target.value)
-                      }
-                      className="w-4 h-4 text-[#49d7c0] bg-black/30 border-gray-700 focus:ring-[#49d7c0]"
-                      required
-                    />
-                    <label className="ml-2 text-gray-300 text-sm">
-                      Email 🌱 (recommandé - plus durable)
-                    </label>
-                  </div>
-                  <div className="flex items-center">
-                    <input
-                      type="radio"
-                      name="sustainableContact"
-                      value="phone"
-                      checked={formData.sustainableContact === "phone"}
-                      onChange={(e) =>
-                        handleInputChange("sustainableContact", e.target.value)
-                      }
-                      className="w-4 h-4 text-[#49d7c0] bg-black/30 border-gray-700 focus:ring-[#49d7c0]"
-                    />
-                    <label className="ml-2 text-gray-300 text-sm">
-                      Téléphone
-                    </label>
-                  </div>
-                </div>
-                <p className="text-gray-500 text-xs mt-1">
-                  🌱 L'email est plus durable que le SMS (moins d'impact environnemental)
-                </p>
-              </div>
-
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <label className="block text-gray-300 text-sm font-medium">
@@ -1125,21 +1095,6 @@ function FormPageContent() {
                   Minimum 10 caractères
                 </p>
               </div>
-
-              <div className="flex items-center">
-                <input
-                  type="checkbox"
-                  name="newsletter"
-                  checked={formData.newsletter === "true"}
-                  onChange={(e) =>
-                    handleInputChange("newsletter", e.target.checked)
-                  }
-                  className="w-4 h-4 text-[#49d7c0] bg-black/30 border-gray-700 rounded focus:ring-[#49d7c0]"
-                />
-                <label className="ml-2 text-gray-300 text-sm">
-                  Je souhaite recevoir la newsletter
-                </label>
-              </div>
             </>
           )}
 
@@ -1147,7 +1102,7 @@ function FormPageContent() {
           {mission === "info" && (
             <>
               <h2 className="text-xl font-bold text-white mb-2">
-                Demande d'Informations
+                Demande d&apos;Informations
               </h2>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1218,7 +1173,7 @@ function FormPageContent() {
 
               <div>
                 <label className="block text-gray-300 mb-2 text-sm font-medium">
-                  Type d'information recherchée *
+                  Type d&apos;information recherchée *
                 </label>
                 <select
                   name="infoType"
@@ -1234,7 +1189,7 @@ function FormPageContent() {
                   <option value="projects">Projets en cours</option>
                   <option value="participation">Comment participer</option>
                   <option value="stats">Statistiques et rapports</option>
-                  <option value="team">L'équipe et l'organisation</option>
+                  <option value="team">L&apos;équipe et l&apos;organisation</option>
                   <option value="other">Autre</option>
                 </select>
               </div>
@@ -1259,7 +1214,7 @@ function FormPageContent() {
                   onChange={(e) =>
                     handleTextareaChange("question", e.target.value)
                   }
-                  placeholder="Détaillez votre demande d'information..."
+                  placeholder="Détaillez votre demande d&apos;information..."
                   className="w-full bg-black/30 border border-gray-700 rounded-lg p-3 text-white focus:outline-none focus:border-[#49d7c0] focus:ring-1 focus:ring-[#49d7c0] transition-all"
                   rows={6}
                   required
@@ -1268,85 +1223,13 @@ function FormPageContent() {
                   Minimum 20 caractères
                 </p>
               </div>
-
-              <div className="space-y-3">
-                <label className="block text-gray-300 text-sm font-medium">
-                  Comment souhaitez-vous être contacté ? *
-                </label>
-                <div className="space-y-2">
-                  <div className="flex items-center">
-                    <input
-                      type="radio"
-                      name="sustainableContact"
-                      value="email"
-                      checked={formData.sustainableContact === "email"}
-                      onChange={(e) =>
-                        handleInputChange("sustainableContact", e.target.value)
-                      }
-                      className="w-4 h-4 text-[#49d7c0] bg-black/30 border-gray-700 focus:ring-[#49d7c0]"
-                      required
-                    />
-                    <label className="ml-2 text-gray-300 text-sm">
-                      Email 🌱 (recommandé - plus durable)
-                    </label>
-                  </div>
-                  <div className="flex items-center">
-                    <input
-                      type="radio"
-                      name="sustainableContact"
-                      value="phone"
-                      checked={formData.sustainableContact === "phone"}
-                      onChange={(e) =>
-                        handleInputChange("sustainableContact", e.target.value)
-                      }
-                      className="w-4 h-4 text-[#49d7c0] bg-black/30 border-gray-700 focus:ring-[#49d7c0]"
-                    />
-                    <label className="ml-2 text-gray-300 text-sm">
-                      Téléphone
-                    </label>
-                  </div>
-                  <div className="flex items-center">
-                    <input
-                      type="radio"
-                      name="sustainableContact"
-                      value="both"
-                      checked={formData.sustainableContact === "both"}
-                      onChange={(e) =>
-                        handleInputChange("sustainableContact", e.target.value)
-                      }
-                      className="w-4 h-4 text-[#49d7c0] bg-black/30 border-gray-700 focus:ring-[#49d7c0]"
-                    />
-                    <label className="ml-2 text-gray-300 text-sm">
-                      Les deux
-                    </label>
-                  </div>
-                </div>
-                <p className="text-gray-500 text-xs mt-1">
-                  🌱 L'email est plus durable que le SMS (moins d'impact environnemental)
-                </p>
-              </div>
-
-              <div className="flex items-center">
-                <input
-                  type="checkbox"
-                  name="urgent"
-                  checked={formData.urgent === "true"}
-                  onChange={(e) =>
-                    handleInputChange("urgent", e.target.checked)
-                  }
-                  className="w-4 h-4 text-[#49d7c0] bg-black/30 border-gray-700 rounded focus:ring-[#49d7c0]"
-                />
-                <label className="ml-2 text-gray-300 text-sm">
-                  Cette demande est urgente
-                </label>
-              </div>
             </>
           )}
 
           {/* Submit button */}
           <button
             type="submit"
-            disabled={isSubmitting}
+            disabled={isSubmitting || !isFormValid()}
             className="mt-8 w-full py-3 bg-gradient-to-r from-[#49d7c0] to-[#72f0e0] text-gray-900 font-bold rounded-lg hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
           >
             {isSubmitting ? (
@@ -1356,19 +1239,11 @@ function FormPageContent() {
               </>
             ) : (
               <>
-                <span className="mr-2">🔐</span>
-                <span>Envoyer (sécurisé HTTPS)</span>
+                <span className="mr-2"></span>
+                <span>Envoyer </span>
               </>
             )}
           </button>
-
-          {/* Message de sécurité */}
-          <div className="mt-4 p-3 bg-green-500/10 border border-green-400/30 rounded-lg">
-            <p className="text-sm text-green-300 flex items-center">
-              <span className="mr-2">🔐</span>
-              <span><strong>Données sécurisées :</strong> Vos informations transitent via HTTPS et sont protégées contre le spam.</span>
-            </p>
-          </div>
         </form>
 
         {/* Sweet Alert */}
